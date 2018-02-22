@@ -34,57 +34,29 @@
 #include <config.h>
 #include <roken.h>
 
-#include <wincrypt.h>
+//#include <wincrypt.h>
+#include <bcrypt.h>
 
 #include <rand.h>
 #include <heim_threads.h>
 
 #include "randi.h"
 
-volatile static HCRYPTPROV g_cryptprovider = NULL;
+volatile static BCRYPT_ALG_HANDLE g_cryptprovider = NULL;
 
-static HCRYPTPROV
+static BCRYPT_ALG_HANDLE
 _hc_CryptProvider(void)
 {
-    BOOL rv;
-    HCRYPTPROV cryptprovider = NULL;
+    int rv;
+    BCRYPT_ALG_HANDLE cryptprovider = NULL;
 
     if (g_cryptprovider != NULL)
 	goto out;
 
-    rv = CryptAcquireContext(&cryptprovider, NULL,
-			      MS_ENHANCED_PROV, PROV_RSA_FULL,
-			      CRYPT_VERIFYCONTEXT);
-
-    if (GetLastError() == NTE_BAD_KEYSET) {
-        rv = CryptAcquireContext(&cryptprovider, NULL,
-                                 MS_ENHANCED_PROV, PROV_RSA_FULL,
-                                 CRYPT_NEWKEYSET);
-    }
-
-    if (rv) {
-        /* try the default provider */
-        rv = CryptAcquireContext(&cryptprovider, NULL, 0, PROV_RSA_FULL,
-                                 CRYPT_VERIFYCONTEXT);
-
-        if (GetLastError() == NTE_BAD_KEYSET) {
-            rv = CryptAcquireContext(&cryptprovider, NULL,
-                                     MS_ENHANCED_PROV, PROV_RSA_FULL,
-                                     CRYPT_NEWKEYSET);
-        }
-    }
-
-    if (rv) {
-        /* try just a default random number generator */
-        rv = CryptAcquireContext(&cryptprovider, NULL, 0, PROV_RNG,
-                                 CRYPT_VERIFYCONTEXT);
-    }
-
-    if (rv == 0 &&
-        InterlockedCompareExchangePointer((PVOID *) &g_cryptprovider,
-					  (PVOID) cryptprovider, NULL) != 0) {
-
-        CryptReleaseContext(cryptprovider, 0);
+    /* try just a default random number generator */
+    rv = BCryptOpenAlgorithmProvider(&cryptprovider, BCRYPT_RNG_ALGORITHM, NULL, 0);
+    if (BCRYPT_SUCCESS(rv)) {
+        InterlockedCompareExchangePointer((PVOID *) &g_cryptprovider, (PVOID) cryptprovider, NULL);
     }
 
 out:
@@ -105,19 +77,19 @@ w32crypto_seed(const void *indata, int size)
 static int
 w32crypto_bytes(unsigned char *outdata, int size)
 {
-    if (CryptGenRandom(_hc_CryptProvider(), size, outdata))
-	return 1;
-    return 0;
+    int ret;
+    ret = BCryptGenRandom(_hc_CryptProvider(), outdata, size, 0);
+    return BCRYPT_SUCCESS(ret) ? 0 : -1;
 }
 
 static void
 w32crypto_cleanup(void)
 {
-    HCRYPTPROV cryptprovider;
+    BCRYPT_ALG_HANDLE cryptprovider;
 
     if (InterlockedCompareExchangePointer((PVOID *) &cryptprovider,
 					  0, (PVOID) g_cryptprovider) == 0) {
-        CryptReleaseContext(cryptprovider, 0);
+        (void)BCryptCloseAlgorithmProvider(cryptprovider, 0);
     }
 }
 
