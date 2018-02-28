@@ -99,10 +99,10 @@ stdio_seek(krb5_storage * sp, off_t offset, int whence)
 {
     int save_errno = errno;
 
-    if (fseeko(F(sp), offset, whence) != 0)
+    if (fseek(F(sp), offset, whence) != 0)
         return -1;
     errno = save_errno;
-    return ftello(F(sp));
+    return ftell(F(sp));
 }
 
 static int
@@ -114,7 +114,7 @@ stdio_trunc(krb5_storage * sp, off_t offset)
         return errno;
     if (ftruncate(fileno(F(sp)), offset) == -1)
 	return errno;
-    if (fseeko(F(sp), offset, SEEK_SET) == -1)
+    if (fseek(F(sp), offset, SEEK_SET) == -1)
         return errno;
     errno = save_errno;
     return 0;
@@ -190,7 +190,7 @@ krb5_storage_stdio_from_fd(int fd_in, const char *mode)
 
     errno = saved_errno;
 
-    if (fseeko(f, off, SEEK_SET) == -1) {
+    if (fseek(f, off, SEEK_SET) == -1) {
         saved_errno = errno;
         (void) fclose(f);
         errno = saved_errno;

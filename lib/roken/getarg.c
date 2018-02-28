@@ -41,6 +41,10 @@
 
 #define ISFLAG(X) ((X).type == arg_flag || (X).type == arg_negative_flag)
 
+#if defined(WINAPI_FAMILY) && WINAPI_FAMILY == WINAPI_FAMILY_APP
+#define getenv(x) NULL
+#endif
+
 static size_t
 print_arg (char *string,
 	   size_t len,

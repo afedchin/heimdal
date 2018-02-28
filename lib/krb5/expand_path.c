@@ -39,6 +39,7 @@ typedef int PTYPE;
 #ifdef _WIN32
 #include <shlobj.h>
 #include <sddl.h>
+#include <tchar.h>
 
 /*
  * Expand a %{TEMP} token
@@ -54,10 +55,10 @@ typedef int PTYPE;
 static krb5_error_code
 _expand_temp_folder(krb5_context context, PTYPE param, const char *postfix, char **ret)
 {
-    TCHAR tpath[MAX_PATH];
+    CHAR tpath[MAX_PATH];
     size_t len;
 
-    if (!GetTempPath(sizeof(tpath)/sizeof(tpath[0]), tpath)) {
+    if (!GetTempPathA(sizeof(tpath)/sizeof(tpath[0]), tpath)) {
 	if (context)
 	    krb5_set_error_message(context, EINVAL,
 				   "Failed to get temporary path (GLE=%d)",
@@ -80,6 +81,33 @@ _expand_temp_folder(krb5_context context, PTYPE param, const char *postfix, char
 
 extern HINSTANCE _krb5_hInstance;
 
+#if defined(WINAPI_FAMILY) && WINAPI_FAMILY == WINAPI_FAMILY_APP
+extern char* uwp_get_home_dir(void);
+
+static krb5_error_code
+_expand_win10_dir(krb5_context context, PTYPE param, const char *postfix, char **ret) 
+{
+  char path[1024];
+  char* home_dir = uwp_get_home_dir();
+
+  if (home_dir)
+    strcpy(path, home_dir);
+  else
+    return krb5_enomem(context);
+
+  if (postfix) {
+    if (strlcat(path, postfix, sizeof(path) / sizeof(path[0])) >= sizeof(path) / sizeof(path[0]))
+      return EINVAL;
+  }
+
+  *ret = strdup(path);
+  if (*ret == NULL)
+    return krb5_enomem(context);
+
+  return 0;
+}
+#endif
+
 /*
  * Expand a %{BINDIR} token
  *
@@ -91,11 +119,11 @@ extern HINSTANCE _krb5_hInstance;
 static krb5_error_code
 _expand_bin_dir(krb5_context context, PTYPE param, const char *postfix, char **ret)
 {
-    TCHAR path[MAX_PATH];
-    TCHAR *lastSlash;
+    CHAR path[MAX_PATH];
+    CHAR *lastSlash;
     DWORD nc;
 
-    nc = GetModuleFileName(_krb5_hInstance, path, sizeof(path)/sizeof(path[0]));
+    nc = GetModuleFileNameA(_krb5_hInstance, path, sizeof(path)/sizeof(path[0]));
     if (nc == 0 ||
 	nc == sizeof(path)/sizeof(path[0])) {
 	return EINVAL;
@@ -103,7 +131,7 @@ _expand_bin_dir(krb5_context context, PTYPE param, const char *postfix, char **r
 
     lastSlash = strrchr(path, '\\');
     if (lastSlash != NULL) {
-	TCHAR *fslash = strrchr(lastSlash, '/');
+	CHAR *fslash = strrchr(lastSlash, '/');
 
 	if (fslash != NULL)
 	    lastSlash = fslash;
@@ -146,7 +174,7 @@ _expand_userid(krb5_context context, PTYPE param, const char *postfix, char **re
     HANDLE hToken = NULL;
     PTOKEN_OWNER pOwner = NULL;
     DWORD len = 0;
-    LPTSTR strSid = NULL;
+    LPSTR strSid = NULL;
 
     hThread = GetCurrentThread();
 
@@ -207,7 +235,7 @@ _expand_userid(krb5_context context, PTYPE param, const char *postfix, char **re
 	goto _exit;
     }
 
-    if (!ConvertSidToStringSid(pOwner->Owner, &strSid)) {
+    if (!ConvertSidToStringSidA(pOwner->Owner, &strSid)) {
 	if (context)
 	    krb5_set_error_message(context, rv, "Can't convert SID to string. GLE=%d", GetLastError());
 	goto _exit;
@@ -239,10 +267,12 @@ _expand_userid(krb5_context context, PTYPE param, const char *postfix, char **re
 static krb5_error_code
 _expand_csidl(krb5_context context, PTYPE folder, const char *postfix, char **ret)
 {
-    TCHAR path[MAX_PATH];
+    CHAR path[MAX_PATH];
     size_t len;
-
-    if (SHGetFolderPath(NULL, folder, NULL, SHGFP_TYPE_CURRENT, path) != S_OK) {
+#if !defined(WINAPI_FAMILY) || WINAPI_FAMILY != WINAPI_FAMILY_APP
+    if (SHGetFolderPath(NULL, folder, NULL, SHGFP_TYPE_CURRENT, path) != S_OK) 
+#endif
+    {
 	if (context)
 	    krb5_set_error_message(context, EINVAL, "Unable to determine folder path");
 	return EINVAL;
@@ -349,7 +379,7 @@ static const struct {
 #ifdef _WIN32
 #define CSIDLP(C,P) FTYPE_CSIDL, C, P, _expand_csidl
 #define CSIDL(C) CSIDLP(C, NULL)
-
+#if !defined(WINAPI_FAMILY) || WINAPI_FAMILY != WINAPI_FAMILY_APP
     {"APPDATA", CSIDL(CSIDL_APPDATA)}, /* Roaming application data (for current user) */
     {"COMMON_APPDATA", CSIDL(CSIDL_COMMON_APPDATA)}, /* Application data (all users) */
     {"LOCAL_APPDATA", CSIDL(CSIDL_LOCAL_APPDATA)}, /* Local application data (for current user) */
@@ -357,6 +387,16 @@ static const struct {
     {"WINDOWS", CSIDL(CSIDL_WINDOWS)}, /* Windows folder */
     {"USERCONFIG", CSIDLP(CSIDL_APPDATA, "\\" PACKAGE)}, /* Per user Heimdal configuration file path */
     {"COMMONCONFIG", CSIDLP(CSIDL_COMMON_APPDATA, "\\" PACKAGE)}, /* Common Heimdal configuration file path */
+#else
+    /* UWP app configuration file path for all tokens */
+    {"APPDATA", SPECIAL(_expand_win10_dir) },
+    {"COMMON_APPDATA", SPECIAL(_expand_win10_dir) },
+    {"LOCAL_APPDATA", SPECIAL(_expand_win10_dir) },
+    {"SYSTEM", SPECIAL(_expand_win10_dir) },
+    {"WINDOWS", SPECIAL(_expand_win10_dir) },
+    {"USERCONFIG", SPECIAL(_expand_win10_dir) }, 
+    {"COMMONCONFIG", SPECIAL(_expand_win10_dir) },
+#endif
     {"LIBDIR", SPECIAL(_expand_bin_dir)},
     {"BINDIR", SPECIAL(_expand_bin_dir)},
     {"LIBEXEC", SPECIAL(_expand_bin_dir)},

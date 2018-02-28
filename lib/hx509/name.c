@@ -348,7 +348,7 @@ dsstringprep(const DirectoryString *ds, uint32_t **rname, size_t *rlen)
     wind_profile_flags flags;
     size_t i, len;
     int ret;
-    uint32_t *name;
+    uint32_t *name = NULL;
 
     *rname = NULL;
     *rlen = 0;

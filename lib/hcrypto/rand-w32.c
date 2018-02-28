@@ -79,7 +79,7 @@ w32crypto_bytes(unsigned char *outdata, int size)
 {
     int ret;
     ret = BCryptGenRandom(_hc_CryptProvider(), outdata, size, 0);
-    return BCRYPT_SUCCESS(ret) ? 0 : -1;
+    return BCRYPT_SUCCESS(ret) ? 1 : 0;
 }
 
 static void

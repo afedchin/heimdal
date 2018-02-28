@@ -46,7 +46,14 @@
 #endif
 
 #ifdef _WIN32
+#if defined(WINAPI_FAMILY) && WINAPI_FAMILY == WINAPI_FAMILY_APP
+#ifdef getpid
+#undef getpid
+#endif
+#define getpid GetCurrentProcessId
+#else
 #include <shlobj.h>
+#endif
 #endif
 
 struct st_attr {
@@ -818,7 +825,7 @@ func_not_supported(void)
 static char *
 get_config_file_for_user(void)
 {
-    char *fn;
+    char *fn = NULL;
 
 #ifndef _WIN32
     char *home;
@@ -841,7 +848,7 @@ get_config_file_for_user(void)
         } else
             fn = strdup("/etc/soft-token.rc");
     }
-#else  /* Windows */
+#elif !defined(WINAPI_FAMILY) || WINAPI_FAMILY != WINAPI_FAMILY_APP /* Windows */
 
     char appdatafolder[MAX_PATH];
 

@@ -1852,7 +1852,7 @@ _get_default_cc_name_from_registry(krb5_context context, HKEY hkBase)
     HKEY hk_k5 = 0;
     LONG code;
     char *ccname = NULL;
-
+#if !defined(WINAPI_FAMILY) || WINAPI_FAMILY != WINAPI_FAMILY_APP
     code = RegOpenKeyEx(hkBase,
                         REGPATH_MIT_KRB5,
                         0, KEY_READ, &hk_k5);
@@ -1864,20 +1864,20 @@ _get_default_cc_name_from_registry(krb5_context context, HKEY hkBase)
                                              REG_NONE, 0);
 
     RegCloseKey(hk_k5);
-
+#endif
     return ccname;
 }
 
 KRB5_LIB_FUNCTION char * KRB5_LIB_CALL
 _krb5_get_default_cc_name_from_registry(krb5_context context)
 {
-    char *ccname;
-
+    char *ccname = NULL;
+#if !defined(WINAPI_FAMILY) || WINAPI_FAMILY != WINAPI_FAMILY_APP
     ccname = _get_default_cc_name_from_registry(context, HKEY_CURRENT_USER);
     if (ccname == NULL)
 	ccname = _get_default_cc_name_from_registry(context,
 						    HKEY_LOCAL_MACHINE);
-
+#endif
     return ccname;
 }
 
@@ -1889,6 +1889,7 @@ _krb5_set_default_cc_name_to_registry(krb5_context context, krb5_ccache id)
     int ret = -1;
     char * ccname = NULL;
 
+#if !defined(WINAPI_FAMILY) || WINAPI_FAMILY != WINAPI_FAMILY_APP
     code = RegOpenKeyEx(HKEY_CURRENT_USER,
                         REGPATH_MIT_KRB5,
                         0, KEY_READ|KEY_WRITE, &hk_k5);
@@ -1902,13 +1903,13 @@ _krb5_set_default_cc_name_to_registry(krb5_context context, krb5_ccache id)
 
     ret = _krb5_store_string_to_reg_value(context, hk_k5, "ccname",
                                           REG_SZ, ccname, -1, 0);
-
   cleanup:
 
     if (ccname)
         free(ccname);
 
     RegCloseKey(hk_k5);
+#endif
 
     return ret;
 }

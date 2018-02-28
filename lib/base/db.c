@@ -54,6 +54,10 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #ifdef WIN32
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <windows.h>
 #include <io.h>
 #else
 #include <sys/file.h>
@@ -1175,7 +1179,17 @@ open_file(const char *dbname, int for_write, int excl, int *fd_out, heim_error_t
 
     if (fd_out)
 	*fd_out = -1;
-
+#if defined(WINAPI_FAMILY) && WINAPI_FAMILY == WINAPI_FAMILY_APP
+    CREATEFILE2_EXTENDED_PARAMETERS ext;
+    memset(&ext, 0, sizeof(CREATEFILE2_EXTENDED_PARAMETERS));
+    ext.dwFileAttributes = FILE_ATTRIBUTE_NORMAL;
+    if (for_write)
+      hFile = CreateFile2(dbname, GENERIC_WRITE | GENERIC_READ, 0,
+        CREATE_ALWAYS, &ext);
+    else
+      hFile = CreateFile2(dbname, GENERIC_READ, FILE_SHARE_READ,
+        OPEN_EXISTING, &ext);
+#else
     if (for_write)
 	hFile = CreateFile(dbname, GENERIC_WRITE | GENERIC_READ, 0,
 			   NULL, /* we'll close as soon as we read */
@@ -1184,6 +1198,7 @@ open_file(const char *dbname, int for_write, int excl, int *fd_out, heim_error_t
 	hFile = CreateFile(dbname, GENERIC_READ, FILE_SHARE_READ,
 			   NULL, /* we'll close as soon as we read */
 			   OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+#endif
     if (hFile == INVALID_HANDLE_VALUE) {
 	ret = GetLastError();
 	_set_errno(ret); /* CreateFile() does not set errno */

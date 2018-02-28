@@ -48,8 +48,10 @@ KRB5_DEFAULT_CONFIG_FILE
 "~/.krb5/config" PATH_SEP
 SYSCONFDIR "/krb5.conf" PATH_SEP
 #ifdef _WIN32
+#if !defined(WINAPI_FAMILY) || WINAPI_FAMILY != WINAPI_FAMILY_APP
 "%{COMMON_APPDATA}/Kerberos/krb5.conf" PATH_SEP
 "%{WINDOWS}/krb5.ini"
+#endif /* !WINAPI_FAMILY_APP */
 #else /* _WIN32 */
 "/etc/krb5.conf"
 #endif /* _WIN32 */

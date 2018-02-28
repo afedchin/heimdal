@@ -29,6 +29,11 @@
  * 
  **********************************************************************/
 
+//#define VALUE_TO_STRING(x) #x
+//#define VALUE(x) VALUE_TO_STRING(x)
+//#define VAR_NAME_VALUE(var) #var "="  VALUE(var)
+//#pragma message(VAR_NAME_VALUE(_WIN32_WINNT))
+
 #ifndef __CONFIG_H__
 #define __CONFIG_H__
 

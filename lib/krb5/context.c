@@ -37,6 +37,10 @@
 #include <assert.h>
 #include <com_err.h>
 
+#if defined(WINAPI_FAMILY) && WINAPI_FAMILY == WINAPI_FAMILY_APP
+#define getenv(x) NULL
+#endif
+
 #define INIT_FIELD(C, T, E, D, F)					\
     (C)->E = krb5_config_get_ ## T ## _default ((C), NULL, (D), 	\
 						"libdefaults", F, NULL)
@@ -684,7 +688,7 @@ krb5_set_config_files(krb5_context context, char **filenames)
 	return ENXIO;
 #endif
 
-#ifdef _WIN32
+#if defined(_WIN32) && defined(WINAPI_FAMILY) && WINAPI_FAMILY != WINAPI_FAMILY_APP
     _krb5_load_config_from_registry(context, &tmp);
 #endif
 
@@ -808,7 +812,7 @@ krb5_prepend_config_files_default(const char *filelist, char ***pfilenames)
     return 0;
 }
 
-#ifdef _WIN32
+#if defined(_WIN32) && (!defined(WINAPI_FAMILY) || WINAPI_FAMILY != WINAPI_FAMILY_APP)
 
 /**
  * Checks the registry for configuration file location
@@ -822,6 +826,7 @@ _krb5_get_default_config_config_files_from_registry()
 {
     static const char * KeyName = "Software\\MIT\\Kerberos";
     char *config_file = NULL;
+
     LONG rcode;
     HKEY key;
 
@@ -867,7 +872,7 @@ krb5_get_default_config_files(char ***pfilenames)
         return EINVAL;
     files = secure_getenv("KRB5_CONFIG");
 
-#ifdef _WIN32
+#if defined(_WIN32) && defined(WINAPI_FAMILY) && WINAPI_FAMILY != WINAPI_FAMILY_APP
     if (files == NULL) {
         char * reg_files;
         reg_files = _krb5_get_default_config_config_files_from_registry();

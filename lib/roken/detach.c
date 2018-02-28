@@ -31,8 +31,10 @@
 #include <errno.h>
 #include <fcntl.h>
 #ifdef WIN32
+#include <Windows.h>
 #include <io.h>
 #include <stdlib.h>
+#include <Processthreadsapi.h>
 #else
 #include <unistd.h>
 #endif
@@ -47,6 +49,7 @@ static int pipefds[2] = {-1, -1};
 ROKEN_LIB_FUNCTION void ROKEN_LIB_CALL
 roken_detach_prep(int argc, char **argv, char *special_arg)
 {
+#if !defined(WINAPI_FAMILY) || WINAPI_FAMILY != WINAPI_FAMILY_APP
     pid_t child;
     char buf[1];
     ssize_t bytes;
@@ -149,6 +152,7 @@ roken_detach_prep(int argc, char **argv, char *special_arg)
                  "daemon child preparation failed (child exited)");
     }
     _exit(0);
+#endif
 }
 
 #ifdef WIN32

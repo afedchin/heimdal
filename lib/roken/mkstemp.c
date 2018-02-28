@@ -46,6 +46,13 @@
 
 #ifndef HAVE_MKSTEMP
 
+#if defined(WINAPI_FAMILY) && WINAPI_FAMILY == WINAPI_FAMILY_APP
+#if defined getpid
+#undef getpid
+#endif
+#define getpid GetCurrentProcessId
+#endif
+
 ROKEN_LIB_FUNCTION int ROKEN_LIB_CALL
 mkstemp(char *template)
 {

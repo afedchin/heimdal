@@ -53,9 +53,13 @@ rk_random_init(void)
 
     osInfo.dwOSVersionInfoSize = sizeof(osInfo);
     hasRand_s =
+#if !defined(WINAPI_FAMILY) || WINAPI_FAMILY != WINAPI_FAMILY_APP
 	(GetVersionEx(&osInfo)
 	  && ((osInfo.dwMajorVersion > 5) ||
 	       (osInfo.dwMajorVersion == 5) && (osInfo.dwMinorVersion >= 1)));
+#else
+      1;
+#endif
 # endif
     srand (time(NULL));
 #endif

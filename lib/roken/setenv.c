@@ -63,10 +63,10 @@ setenv(const char *var, const char *val, int rewrite)
 #else  /* Win32 */
     char dummy[8];
 
-    if (!rewrite && GetEnvironmentVariable(var, dummy, sizeof(dummy)/sizeof(char)) != 0)
+    if (!rewrite && GetEnvironmentVariableA(var, dummy, sizeof(dummy)/sizeof(char)) != 0)
 	return 0;
 
-    if (SetEnvironmentVariable(var, val) == 0)
+    if (SetEnvironmentVariableA(var, val) == 0)
 	return -1;
     else
 	return 0;

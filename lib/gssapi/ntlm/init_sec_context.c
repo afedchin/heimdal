@@ -86,12 +86,12 @@ get_user_file(const ntlm_name target_name,
 	      char **domainp, char **usernamep, struct ntlm_buf *key)
 {
     const char *domain;
-    const char *fn;
 
     *domainp = NULL;
 
     domain = target_name != NULL ? target_name->domain : NULL;
-
+#if !defined(WINAPI_FAMILY) || WINAPI_FAMILY != WINAPI_FAMILY_APP
+    const char *fn;
     fn = secure_getenv("NTLM_USER_FILE");
     if (fn == NULL)
 	return ENOENT;
@@ -99,6 +99,26 @@ get_user_file(const ntlm_name target_name,
 	return 0;
 
     return ENOENT;
+#else
+#define NTLM_USER_FILE_NAME "ntlm-user-file.txt"
+
+    extern char* uwp_get_home_dir(void);
+    char* home_dir = uwp_get_home_dir();
+
+    if (!home_dir)
+      return ENOENT;
+
+    size_t len = _scprintf("%s\\%s", home_dir, NTLM_USER_FILE_NAME);
+    char* path = (char*)malloc(len + 1);
+    sprintf_s(path, len + 1, "%s\\%s", home_dir, NTLM_USER_FILE_NAME);
+
+    int ret = from_file(path, domain, domainp, usernamep, key);
+    free(path);
+
+    if (ret == 0)
+      return 0;
+    return ENOENT;
+#endif
 }
 
 /*

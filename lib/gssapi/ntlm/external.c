@@ -105,7 +105,7 @@ static gssapi_mech_interface_desc ntlm_mech = {
     NULL,
     NULL,
     NULL,
-    NULL,
+    NULL,//acquire_cred_ext
     _gss_ntlm_iter_creds_f,
     _gss_ntlm_destroy_cred,
     NULL,

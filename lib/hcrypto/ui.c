@@ -61,6 +61,9 @@ static int
 read_string(const char *preprompt, const char *prompt,
 	    char *buf, size_t len, int echo)
 {
+#if defined(WINAPI_FAMILY) && WINAPI_FAMILY == WINAPI_FAMILY_APP
+  return -1;
+#else
     int of = 0;
     int c;
     char *p;
@@ -94,6 +97,7 @@ read_string(const char *preprompt, const char *prompt,
     if(of)
 	return -1;
     return 0;
+#endif
 }
 
 #else /* !HAVE_CONIO_H */

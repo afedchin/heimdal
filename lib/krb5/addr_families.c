@@ -31,6 +31,7 @@
  * SUCH DAMAGE.
  */
 
+#include "config.h"
 #include "krb5_locl.h"
 
 struct addr_operations {

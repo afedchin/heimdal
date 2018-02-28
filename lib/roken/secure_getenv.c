@@ -38,6 +38,10 @@
 #include "roken.h"
 #include "secure_getenv.h"
 
+#if defined(WINAPI_FAMILY) && WINAPI_FAMILY == WINAPI_FAMILY_APP
+#define getenv(x) NULL
+#endif
+
 ROKEN_LIB_FUNCTION char * ROKEN_LIB_CALL
 rk_secure_getenv(const char *name)
 {

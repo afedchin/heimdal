@@ -40,6 +40,10 @@
  * NULL if we can't guess at all.
  */
 
+#if defined(WINAPI_FAMILY) && WINAPI_FAMILY == WINAPI_FAMILY_APP
+#define getenv(x) NULL
+#endif
+
 ROKEN_LIB_FUNCTION const char * ROKEN_LIB_CALL
 get_default_username (void)
 {

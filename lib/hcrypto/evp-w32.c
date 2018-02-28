@@ -46,11 +46,14 @@
 
 #include <evp-wincng.h>
 
+#if !defined(WINAPI_FAMILY) || WINAPI_FAMILY != WINAPI_FAMILY_APP
 static LONG wincng_available = -1;
+#endif
 
 static __inline int
 wincng_check_availability(void)
 {
+#if !defined(WINAPI_FAMILY) || WINAPI_FAMILY != WINAPI_FAMILY_APP
     if (wincng_available == -1) {
 	char szBCryptDllPath[MAX_PATH];
 	UINT cbBCryptDllPath;
@@ -71,6 +74,9 @@ wincng_check_availability(void)
     }
 
     return wincng_available == 1;
+#else
+  return 1;
+#endif
 }
 
 BOOL WINAPI
@@ -90,6 +96,7 @@ _hc_w32crypto_DllMain(HINSTANCE hinstDLL,
     return TRUE;
 }
 
+#if !defined(WINAPI_FAMILY) || WINAPI_FAMILY != WINAPI_FAMILY_APP
 #define EVP_W32CRYPTO_PROVIDER(type, name)		    \
 							    \
     const type *hc_EVP_w32crypto_ ##name (void)		    \
@@ -101,6 +108,15 @@ _hc_w32crypto_DllMain(HINSTANCE hinstDLL,
 	else						    \
 	    return NULL;				    \
     }
+#else
+#define EVP_W32CRYPTO_PROVIDER(type, name)		    \
+							    \
+    const type *hc_EVP_w32crypto_ ##name (void)		    \
+    {							    \
+	    return hc_EVP_wincng_ ##name ();		    \
+    }
+
+#endif
 
 #define EVP_W32CRYPTO_PROVIDER_CNG_UNAVAILABLE(type, name)  \
 							    \

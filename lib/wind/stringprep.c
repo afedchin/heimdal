@@ -130,6 +130,11 @@ static const struct {
  * @ingroup wind
  */
 
+#ifdef _MSC_VER 
+#define strncasecmp _strnicmp
+#define strcasecmp _stricmp
+#endif
+
 int
 wind_profile(const char *name, wind_profile_flags *flags)
 {

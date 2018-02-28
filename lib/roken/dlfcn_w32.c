@@ -142,9 +142,12 @@ dlopen(const char *fn, int flags)
 	return NULL;
     }
 
-    old_error_mode = SetErrorMode(SEM_FAILCRITICALERRORS);
-
+    old_error_mode = SetErrorMode(0x001); // SEM_FAILCRITICALERRORS
+#if !defined(WINAPI_FAMILY) || WINAPI_FAMILY != WINAPI_FAMILY_APP
     hm = LoadLibraryEx(fn, 0, LOAD_WITH_ALTERED_SEARCH_PATH);
+#else
+    hm = LoadPackagedLibrary(fn, 0);
+#endif
 
     if (hm == NULL) {
 	set_error_from_last();
@@ -166,7 +169,10 @@ dlsym(void * vhm, const char * func_name)
 ROKEN_LIB_FUNCTION int ROKEN_LIB_CALL
 dladdr(void *addr, Dl_info *dli)
 {
-    HMODULE hm;
+#if defined(WINAPI_FAMILY) && WINAPI_FAMILY == WINAPI_FAMILY_APP
+  return 0;
+#else
+  HMODULE hm;
     DWORD nsize;
 
     memset(dli, 0, sizeof(*dli));
@@ -182,4 +188,5 @@ dladdr(void *addr, Dl_info *dli)
     if (nsize >= sizeof(dli->_dli_buf))
         return 0; /* truncated? can't be... */
     return 1;
+#endif
 }

@@ -371,7 +371,7 @@ RAND_file_name(char *filename, size_t size)
 	if (fd >= 0)
 	    close(fd);
     }
-#else  /* Win32 */
+#elif !defined(WINAPI_FAMILY) || WINAPI_FAMILY != WINAPI_FAMILY_APP  /* Win32 */
 
     if (e == NULL) {
 	char profile[MAX_PATH];

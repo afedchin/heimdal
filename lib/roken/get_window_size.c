@@ -99,7 +99,7 @@ get_window_size(int fd, int *lines, int *columns)
 	    *columns = dst[0];
 	return 0;
     }
-#elif defined(_WIN32)
+#elif defined(_WIN32) && (!defined(WINAPI_FAMILY) || WINAPI_FAMILY != WINAPI_FAMILY_APP)
     {
         intptr_t fh = 0;
         CONSOLE_SCREEN_BUFFER_INFO sb_info;
@@ -115,6 +115,9 @@ get_window_size(int fd, int *lines, int *columns)
             return 0;
         }
     }
+#elif defined(WINAPI_FAMILY) && WINAPI_FAMILY == WINAPI_FAMILY_APP
+#define getenv(x) NULL
+    return -1;
 #endif
     if (columns) {
     	if ((s = getenv("COLUMNS")))

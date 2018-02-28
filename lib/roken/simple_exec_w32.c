@@ -251,7 +251,8 @@ pipe_execv(FILE **stdin_fd, FILE **stdout_fd, FILE **stderr_fd,
 
 	(stderr_fd && !CreatePipe(&hErr_r, &hErr_w, &sa, 0)) ||
 
-	(!stdout_fd && (hOut_w = CreateFile("CON", GENERIC_WRITE, FILE_SHARE_READ|FILE_SHARE_WRITE,
+#if !defined(WINAPI_FAMILY) || WINAPI_FAMILY != WINAPI_FAMILY_APP
+  (!stdout_fd && (hOut_w = CreateFile("CON", GENERIC_WRITE, FILE_SHARE_READ|FILE_SHARE_WRITE,
 					    &sa, OPEN_EXISTING, 0, NULL)) == INVALID_HANDLE_VALUE) ||
 
 	(!stdin_fd && (hIn_r = CreateFile("CON",GENERIC_READ, FILE_SHARE_READ|FILE_SHARE_WRITE,
@@ -259,9 +260,18 @@ pipe_execv(FILE **stdin_fd, FILE **stdout_fd, FILE **stderr_fd,
 
 	(!stderr_fd && (hErr_w = CreateFile("CON", GENERIC_WRITE, FILE_SHARE_READ|FILE_SHARE_WRITE,
 					    &sa, OPEN_EXISTING, 0, NULL)) == INVALID_HANDLE_VALUE))
+#else
+  (!stdout_fd && (hOut_w = CreateFile2(L"CON", GENERIC_WRITE, FILE_SHARE_READ|FILE_SHARE_WRITE,
+					    OPEN_EXISTING, NULL)) == INVALID_HANDLE_VALUE) ||
 
+	(!stdin_fd && (hIn_r = CreateFile2(L"CON",GENERIC_READ, FILE_SHARE_READ|FILE_SHARE_WRITE,
+					    OPEN_EXISTING, NULL)) == INVALID_HANDLE_VALUE) ||
+
+	(!stderr_fd && (hErr_w = CreateFile2(L"CON", GENERIC_WRITE, FILE_SHARE_READ|FILE_SHARE_WRITE,
+					    OPEN_EXISTING, NULL)) == INVALID_HANDLE_VALUE))
+#endif
 	goto _exit;
-
+#if !defined(WINAPI_FAMILY) || WINAPI_FAMILY != WINAPI_FAMILY_APP
     /* We don't want the child processes inheriting these */
     if (hOut_r)
 	SetHandleInformation(hOut_r, HANDLE_FLAG_INHERIT, FALSE);
@@ -271,12 +281,12 @@ pipe_execv(FILE **stdin_fd, FILE **stdout_fd, FILE **stderr_fd,
 
     if (hErr_r)
 	SetHandleInformation(hErr_r, HANDLE_FLAG_INHERIT, FALSE);
-
+#endif
     si.cb = sizeof(si);
     si.lpReserved = NULL;
     si.lpDesktop = NULL;
     si.lpTitle = NULL;
-    si.dwFlags = STARTF_USESTDHANDLES;
+    si.dwFlags = 0x00000200;// STARTF_USESTDHANDLES;
     si.hStdInput = hIn_r;
     si.hStdOutput = hOut_w;
     si.hStdError = hErr_w;
@@ -340,8 +350,8 @@ simple_execvp_timed(const char *file, char *const args[],
 		    time_t (*func)(void *), void *ptr, time_t timeout)
 {
     intptr_t hp;
-    int rv;
-
+    int rv = 127;
+#if !defined(WINAPI_FAMILY) || WINAPI_FAMILY != WINAPI_FAMILY_APP
     hp = spawnvp(_P_NOWAIT, file, args);
 
     if (hp == -1)
@@ -352,7 +362,7 @@ simple_execvp_timed(const char *file, char *const args[],
     rv = wait_for_process_timed(GetProcessId((HANDLE) hp), func, ptr, timeout);
 
     CloseHandle((HANDLE) hp);
-
+#endif
     return rv;
 }
 
@@ -369,8 +379,8 @@ simple_execve_timed(const char *file, char *const args[], char *const envp[],
 		    time_t (*func)(void *), void *ptr, time_t timeout)
 {
     intptr_t hp;
-    int rv;
-
+    int rv = 127;
+#if !defined(WINAPI_FAMILY) || WINAPI_FAMILY != WINAPI_FAMILY_APP
     hp = spawnve(_P_NOWAIT, file, args, envp);
 
     if (hp == -1)
@@ -381,7 +391,7 @@ simple_execve_timed(const char *file, char *const args[], char *const envp[],
     rv = wait_for_process_timed(GetProcessId((HANDLE) hp), func, ptr, timeout);
 
     CloseHandle((HANDLE) hp);
-
+#endif
     return rv;
 }
 

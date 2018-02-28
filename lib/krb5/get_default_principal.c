@@ -37,6 +37,10 @@
  * Try to find out what's a reasonable default principal.
  */
 
+#if defined(WINAPI_FAMILY) && WINAPI_FAMILY == WINAPI_FAMILY_APP
+#define getenv(x) NULL
+#endif
+
 static const char*
 get_env_user(void)
 {
@@ -110,7 +114,8 @@ _krb5_get_default_principal_local(krb5_context context,
 	char username[1024];
 	ULONG sz = sizeof(username);
 
-	if (GetUserNameEx(NameUserPrincipal, username, &sz)) {
+#if !defined(WINAPI_FAMILY) || WINAPI_FAMILY != WINAPI_FAMILY_APP
+  if (GetUserNameEx(NameUserPrincipal, username, &sz)) {
 	    return krb5_parse_name_flags(context, username,
 					 KRB5_PRINCIPAL_PARSE_ENTERPRISE,
 					 princ);
@@ -137,8 +142,10 @@ _krb5_get_default_principal_local(krb5_context context,
 				  "unable to figure out current principal");
 	    return ENOTTY;	/* Really? */
 	}
-
-	return krb5_make_principal(context, princ, NULL, username, NULL);
+  return krb5_make_principal(context, princ, NULL, username, NULL);
+#else
+  return krb5_make_principal(context, princ, NULL, "Guest", NULL);
+#endif
     }
 }
 
