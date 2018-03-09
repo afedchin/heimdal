@@ -84,3 +84,92 @@ _gss_ntlm_acquire_cred(OM_uint32            *min_stat,
 
     return (GSS_S_COMPLETE);
 }
+
+OM_uint32 GSSAPI_CALLCONV
+_gss_ntlm_acquire_cred_ext(OM_uint32 * min_stat,
+                           gss_const_name_t desired_name,
+                           gss_const_OID credential_type,
+                           const void *credential_data,
+                           OM_uint32 time_req,
+                           gss_const_OID desired_mech,
+                           gss_cred_usage_t cred_usage,
+                           gss_cred_id_t * output_cred_handle)
+{
+  ntlm_name name = (ntlm_name)desired_name;
+  const char *domain = NULL;
+  OM_uint32 maj_stat;
+  ntlm_ctx ctx;
+
+  *min_stat = 0;
+  *output_cred_handle = GSS_C_NO_CREDENTIAL;
+
+  if (cred_usage == GSS_C_BOTH || cred_usage == GSS_C_ACCEPT) {
+
+    maj_stat = _gss_ntlm_allocate_ctx(min_stat, &ctx);
+    if (maj_stat != GSS_S_COMPLETE)
+      return maj_stat;
+
+    domain = name != NULL ? name->domain : NULL;
+    maj_stat = (*ctx->server->nsi_probe)(min_stat, ctx->ictx, domain);
+    {
+      gss_ctx_id_t context = (gss_ctx_id_t)ctx;
+      OM_uint32 junk;
+      _gss_ntlm_delete_sec_context(&junk, &context, NULL);
+    }
+    if (maj_stat)
+      return maj_stat;
+  }
+
+  if (cred_usage == GSS_C_BOTH || cred_usage == GSS_C_INITIATE) {
+    ntlm_cred cred;
+
+    if (credential_type != GSS_C_NO_OID && 
+      gss_oid_equal(credential_type, GSS_C_CRED_PASSWORD)) {
+      /* Acquire a cred with a password */
+      gss_const_buffer_t pwbuf = credential_data;
+      if (pwbuf->value == NULL)
+        GSS_S_FAILURE;
+
+      cred = calloc(1, sizeof(*cred));
+      if (cred == NULL) {
+        *min_stat = ENOMEM;
+        return GSS_S_NO_CRED;
+      }
+
+      cred->domain = strdup(name->domain);
+      if (cred->domain == NULL) {
+        *min_stat = ENOMEM;
+        return GSS_S_NO_CRED;
+      }
+      cred->username = strdup(name->user);
+      if (cred->username == NULL) {
+        *min_stat = ENOMEM;
+        return GSS_S_NO_CRED;
+      }
+
+      *min_stat = heim_ntlm_nt_key(pwbuf->value, &cred->key);
+      if (*min_stat)
+        return GSS_S_NO_CRED;
+    }
+    else {
+      /*
+      * _gss_acquire_cred_ext() called with something other than a password.
+      *
+      * Not supported.
+      *
+      * _gss_acquire_cred_ext() is not a supported public interface, so
+      * we don't have to try too hard as to minor status codes here.
+      */
+      OM_uint32 junk;
+      _gss_ntlm_delete_sec_context(&junk, &ctx, NULL);
+      *min_stat = ENOTSUP;
+      return GSS_S_FAILURE;
+    }
+    cred->usage = cred_usage;
+
+    *output_cred_handle = (gss_cred_id_t)cred;
+  }
+
+  return (GSS_S_COMPLETE);
+
+}
